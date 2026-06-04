@@ -129,7 +129,50 @@ concurrency is available**, as it provides a simpler, dependency-lighter interfa
 
 ---
 
-## 7. Limitations
+## 7. Workaround: reuse the store object
+
+The G2 gap is largely a **usage-pattern issue**, not a fundamental performance defect.
+Running `test_store_reuse.py` (N=5 reps, `consolidated=True`) confirms this:
+
+| Backend | fresh — run 1 | fresh — warm median | reused — run 1 | reused — warm median |
+|---------|--------------|---------------------|----------------|----------------------|
+| obstore | 4.64 s | 2.52 s | 1.85 s | **1.67 s** |
+| fsspec  | 4.52 s | 1.78 s | 1.82 s | 1.81 s |
+
+Key observations:
+- **Reusing the same `ObjectStore` instance drops obstore's warm open time from 2.52 s to
+  1.67 s — a 1.5× speedup**, and makes it *faster* than fsspec (1.67 s vs 1.81 s).
+- Both backends pay a first-call penalty (~1.8–4.6 s, partially from GCS-side caching of
+  `.zmetadata`) that disappears on subsequent calls.
+- With store reuse, **obstore and fsspec are statistically indistinguishable** for open
+  latency (0.93× ratio).
+
+**Recommended pattern for users:**
+
+```python
+# Create the store ONCE per process/session — not per open_zarr call
+from obstore.store import GCSStore
+from zarr.storage import ObjectStore
+
+store = ObjectStore(GCSStore("my-bucket", prefix="path/to/store.zarr", skip_signature=True),
+                   read_only=True)
+
+# Reuse it across multiple open_zarr calls
+ds1 = xr.open_zarr(store, consolidated=True)
+ds2 = xr.open_zarr(store, consolidated=True)  # uses warm connection pool
+```
+
+This matches how users naturally interact with gcsfs (a single `GCSFileSystem` object
+reused across sessions), and eliminates the open-phase gap entirely.
+
+**Action item for zarr-python docs / obstore integration guide:** add a note that
+`ObjectStore` instances are lightweight to reuse and should not be recreated per
+`open_zarr` call. This is analogous to not creating a new `requests.Session` per HTTP
+call.
+
+---
+
+## 8. Limitations
 
 - Runs from a single network endpoint (macOS laptop); GCS egress to this location affects
   absolute times but not the relative obstore/fsspec comparison.

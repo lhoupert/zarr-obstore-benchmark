@@ -34,7 +34,7 @@ chunk reads (see G1 below).
 
 ---
 
-## 3. G2 — Open-phase reproducibility (Max's direct question)
+## 3. G2 — Open-phase reproducibility
 
 > *"Did Claude reproduce the finding that obstore is slower for the metadata + coords reads?"*
 

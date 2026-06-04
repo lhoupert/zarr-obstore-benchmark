@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "zarr-obstore-benchmark"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "zarr==3.2.1",
+    "obstore==0.10.0",
+    "gcsfs==2026.5.0",
+    "xarray==2026.4.0",
+    "numpy==2.4.6",
+    "fsspec==2026.3.0",
+]
+
+[project.optional-dependencies]
+# For maintainers who want to test against a local zarr-python checkout:
+# uv pip install -e /path/to/zarr-python
+dev = ["zarr @ file:///path/to/zarr-python"]
